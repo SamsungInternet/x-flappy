@@ -1,4 +1,4 @@
-import { THREE } from "../../../dist/three-effects.js";
+import * as THREE  from "three";
 
 import { Sky } from "./lib/Sky.js";
 

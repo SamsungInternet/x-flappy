@@ -3,7 +3,7 @@
  * @author Austin Eng / https://github.com/austinEng
  * @author Shrek Shao / https://github.com/shrekshao
  */
-import { THREE} from "../../../../dist/three-effects.js";
+import * as THREE from "three";
 
 const {
 	CompressedTexture,

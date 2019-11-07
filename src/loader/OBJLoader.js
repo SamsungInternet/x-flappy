@@ -1,7 +1,7 @@
 /**
  * @author mrdoob / http://mrdoob.com/
  */
-import { THREE} from "../../../../dist/three-effects.js";
+import * as THREE from "three";
 
 const {
 	BufferGeometry,

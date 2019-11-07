@@ -1,12 +1,12 @@
-import { THREE, attachEffects, attach } from "../../../dist/three-effects.js";
+import { attachEffects, attach } from "three-effects";
+import { WEBVR } from "./lib/WebVR.js";
+import * as THREE from  "three";
+import load from "./loader.js";
 
 import initGround from "./ground.js";
 import initSky from "./sky.js";
-import initStatues from "./statues.js";
-import attachInteract from "./interact.js";
-import attachLabel from "./label.js";
 
-export default function (renderer, scene, camera, assets) {
+function initScene(renderer, scene, camera, assets) {
     
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.autoUpdate = false;
@@ -19,16 +19,15 @@ export default function (renderer, scene, camera, assets) {
     
     // Movement
 
-    var angle = 0;
     var speed = 0;
-    var ascend = 0;
-    var turn = 0;
-
     var lastTime;
     var lastLeft;
     var lastRight;
 
-    var lastForce;
+
+    function clamp(a,b,v) {
+        return Math.max(a, Math.min(b,v));
+    }
 
     scene.addEventListener("beforeRender", function (e) {
         if(lastLeft === undefined) {
@@ -38,20 +37,26 @@ export default function (renderer, scene, camera, assets) {
             return;
         }
 
+        
         // magic flying formula 
         var dt = e.time - lastTime;
         var dl = cc[0].position.y - lastLeft;
         var dr = cc[1].position.y - lastRight;
 
-        var ds = Math.max(0, -1 * (dl + dr)) * e.time * 0.01;
-        camera.position.y +=  ds;
-        camera.rotation.y += (cc[0].position.y - cc[1].position.y) * e.time * 0.01;
-        
-        //lastForce = lastForce !== undefined ? ds - lastForce;
+        var timeConstant = e.time * 0.001 * dt;
+        var smoothConstant = 0.33;
 
-        speed = Math.max(0.1, Math.min(10, speed - ds));
-        scene.dispatchEvent({ type: "control", speed, angle, height: camera.position.y });
+        var ds = clamp(-0.1, 0.33, -1 * (dl + dr) - 0.1) * timeConstant;
+        var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * timeConstant;
+        //user.position.y = smoothConstant * speed + (1 - smoothConstant) * Math.max(0.1, user.position.y + ds);
+        user.rotation.y = smoothConstant * user.rotation.y + (1 - smoothConstant) * (user.rotation.y + da);
+        speed = smoothConstant * speed + (1 - smoothConstant) * Math.max(0.1, speed - ds);
     
+        //scene.dispatchEvent({ type: "control", speed, angle: user.rotation.y});
+    
+        scene.dispatchEvent({ type: "control", speed: 0.001, angle: Math.PI/3, delta: dt});
+    
+        lastTime = e.time;
     })
 
 
@@ -59,7 +64,8 @@ export default function (renderer, scene, camera, assets) {
 
     window.fx = fx;
 
-   attach.bloom(scene, { strength: 0.33, radius: 1, threshold: 0.5 });
+    attach.bloom(scene, { strength: 0.33, radius: 1, threshold: 0.5 });
+
     window.scene = scene;
     scene.userData.bloom_internal.prePass.onBeforeCompile = function (shader) {
         shader.fragmentShader = shader.fragmentShader.replace("gl_FragColor", "alpha *= smoothstep(1., 0.999, texture2D(depthTexture, vUv).r);\ngl_FragColor");
@@ -105,3 +111,5 @@ export default function (renderer, scene, camera, assets) {
 
     window.addEventListener("click", firstClick);
 }
+
+export { initScene, THREE, WEBVR, load }

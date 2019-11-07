@@ -63,10 +63,7 @@
 		</div>
 	   <script type="module">
 
-			import { THREE } from "../../dist/three-effects.js";
-			import { WEBVR } from "../WebVR.js";
-			import load from "./src/loader.js";
-			import initScene from "./src/index.js";
+			import { THREE, initScene, WEBVR, load } from "./dist/app.js";
 			
 			var canvas = document.querySelector( 'canvas' );
 
@@ -96,19 +93,15 @@
 			var loaderEl = document.querySelector("#loader");
 
 			load(renderer, {
-				"venus_model": "./assets/venus/index.obj",
-				"venus_diffuse": "./assets/venus/diffuse.basis",
-				"venus_material": "./assets/venus/arg.basis",
-				"venus_normals": "./assets/venus/normals.png",
-				
-				"column_model": "./assets/column/index.obj",
-				"column_diffuse": "./assets/column/diffuse.basis",
-				"column_normals": "./assets/column/normals.png",
-				
+				"baloon_model": "./assets/baloon/model.obj",
 				"ground_diffuse": "./assets/ground/diffuse.basis",
 				"ground_normals": "./assets/ground/normals.basis",
 				"ground_material": "./assets/ground/arg.basis",
 
+				"comeon": "./assets/comeon.wav",
+				"flap": "./assets/flap.wav",
+				"tsiou": "./assets/tsiou.wav",
+				"comeon": "./assets/comeon.wav",
 				"tick": "./assets/tick.wav",
 				"woosh": "./assets/woosh.wav",
 				"voop": "./assets/voop.wav",
