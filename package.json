@@ -1,0 +1,28 @@
+{
+  "name": "x-flappy",
+  "version": "0.1.0",
+  "description": "No rest for the pidgeons",
+  "main": "./dist/app.js",
+  "scripts": {
+    "dist": "rollup -c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SamsungInternet/three-effects.git"
+  },
+  "keywords": [
+    "flappy"
+  ],
+  "author": "Yannis Gravezas <wizgrav@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SamsungInternet/x-flappy/issues"
+  },
+  "homepage": "https://github.com/SamsungInternet/x-flapy#readme",
+  "devDependencies": {
+    "three": "SamsungInternet/three.js#dev",
+    "three-effects": "SamsungInternet/three-effects#dev",
+    "rollup": "^1.23.1",
+    "rollup-plugin-node-resolve": "^5.2.0"
+  }
+}
