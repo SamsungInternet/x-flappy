@@ -52518,6 +52518,68 @@ function loader(renderer, files, progressCb) {
     return Promise.all(wp).then(function () { return assets; });
 }
 
+/* 
+* Copyright (c) 2016-2018, Yannis Gravezas 
+* Copyright (c) 2019 Samsung Internet
+* Available under the MIT license.
+*/
+
+function attachSystem (obj, name, api) {
+  
+    var objects = [];
+
+    var listeners = {};
+
+    function addListener(lname, fn) {
+        listeners[lname] = fn;
+        obj.addEventListener(lname, listeners[lname]);
+    }
+
+    addListener(name + "/register", function(e) {
+        var index = objects.indexOf(e.entity);
+        if( index !== -1) {
+            if(api.remove) api.remove(e, objects, name);
+        } else {
+            objects.push(e.entity);
+        }
+        e.entity.userData[name] = api.init(e, objects, name);
+    });
+
+    addListener(name + "/unregister", function(e) {
+        var index = objects.indexOf(e.entity);
+        if(index !== -1) {
+            objects.splice(index, 1);
+            if(api.remove) api.remove(e, objects, name);
+            delete e.entity.userData[name];
+        }
+    });
+
+    for (var k in api) {
+        switch(k) {
+            case "init": 
+            case "remove": continue;
+            default:
+                addListener(k, function(e) {
+                    api[k](e, objects, name);
+                });
+                break;
+        }
+    }
+
+    return function (arg) {
+        
+        objects.forEach( function (obj) {
+            if (api.remove) api.remove({ entity: obj }, objects, name);
+            delete e.entity.userdata[name];
+        });
+
+        for(var k in listeners) {
+            obj.removeEventListener(k, listeners[k]);
+        }
+
+    }
+}
+
 function initGround (renderer, scene, camera, assets) {
     
     var group = new Group();
@@ -52551,10 +52613,57 @@ function initGround (renderer, scene, camera, assets) {
     group.add(mesh);
 
     scene.addEventListener("control", function(e) {
-        textureOffset.x += Math.sin(e.angle) * e.speed * e.delta;
-        textureOffset.y += Math.cos(e.angle) * e.speed * e.delta;
+        textureOffset.x += Math.sin(e.angle) * e.speed * e.delta * 0.1;
+        textureOffset.y += Math.cos(e.angle) * e.speed * e.delta * 0.1;
     });
 
+    attachSystem(scene, "move", {
+        init: function(e, objects, name) {
+            if(objects.length > 256) 
+                scene.dispatchEvent({ entity: objects[0], type: name + "/unregister"});
+            return {};
+        },
+
+        remove: function(e, objects, name) {
+            e.entity.parent.remove(e.entity);
+        },
+
+        control: function (e, objects, name) {
+            objects.forEach(function(obj){
+                var a = Math.PI - e.angle;
+                obj.position.x -= Math.sin(a) * e.speed * e.delta;
+                obj.position.z -= Math.cos(a) * e.speed * e.delta;
+                obj.position.y += e.delta;
+            });
+        }
+    });
+
+    function addBaloon() {
+        var mesh = new Mesh(assets["baloon_model"], new MeshStandardMaterial({
+            color: new Color(`hsl(${Math.random() * 255}, 80%, 40%)`),
+            metalness: 0.1,
+            roughness:0.1,
+            transparent: true
+        }));
+
+        mesh.material.opacity = 0.5 ;
+
+        var a = Math.PI * 2 * Math.random();
+        var r = 3 + Math.random() * 6;
+        
+        mesh.position.set( Math.sin(a) * r, -3,  Math.cos(a) * r);
+        scene.dispatchEvent({ type: "move/register", entity: mesh });
+        
+        //mesh.castShadow = true;
+        
+        //mesh.receiveShadow = true;
+
+        scene.dispatchEvent({ type: "audio/voop" });
+
+        group.add(mesh);
+    }
+
+    window.setInterval(addBaloon, 200);
     return group;
 }
 
@@ -52910,6 +53019,10 @@ function initScene(renderer, scene, camera, assets) {
     var cc = [renderer.vr.getController(0),renderer.vr.getController(1)];
     user.add(camera);
     scene.add(user);
+    
+    // Movement
+
+    var speed = 0;
     var lastTime;
     var lastLeft;
     var lastRight;
@@ -52918,6 +53031,9 @@ function initScene(renderer, scene, camera, assets) {
     function clamp(a,b,v) {
         return Math.max(a, Math.min(b,v));
     }
+
+    var dir = new Vector3();
+    var angle = 0;
 
     scene.addEventListener("beforeRender", function (e) {
         if(lastLeft === undefined) {
@@ -52929,19 +53045,34 @@ function initScene(renderer, scene, camera, assets) {
 
         
         // magic flying formula 
-        var dt = e.time - lastTime;
+        var dt = (e.time - lastTime) * 0.001;
         var dl = cc[0].position.y - lastLeft;
         var dr = cc[1].position.y - lastRight;
 
-        var timeConstant = e.time * 0.001 * dt;
+        lastLeft = cc[0].position.y;
+        lastRight = cc[1].position.y;
+        
         var smoothConstant = 0.33;
-        var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * timeConstant;
-        //user.position.y = smoothConstant * speed + (1 - smoothConstant) * Math.max(0.1, user.position.y + ds);
-        user.rotation.y = smoothConstant * user.rotation.y + (1 - smoothConstant) * (user.rotation.y + da);
+
+        camera.getWorldDirection(dir);
+
+        var ds = clamp(-dt, dt,  -(dl + dr) - dt) * dt;
+        
+        user.position.y = smoothConstant * user.position.y + (1 - smoothConstant) * (user.position.y + (ds < 0 ? 33 : 100) * ds );
     
-        //scene.dispatchEvent({ type: "control", speed, angle: user.rotation.y});
+        user.position.y = clamp(0.1, 10, user.position.y);
+
+        speed = smoothConstant * speed + (1 - smoothConstant) * clamp(1, 10, speed - 66 * ds - dt);
     
-        scene.dispatchEvent({ type: "control", speed: 0.001, angle: Math.PI/3, delta: dt});
+        var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * dt;
+    
+        angle = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
+        
+        //scene.dispatchEvent({ type: "control", speed, angle: user.rotation.y, delta: dt});
+    
+        user.rotation.y = -angle;
+
+        scene.dispatchEvent({ type: "control", speed: speed, angle: angle, delta: dt});
     
         lastTime = e.time;
     });

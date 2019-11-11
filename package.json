@@ -21,6 +21,7 @@
   "homepage": "https://github.com/SamsungInternet/x-flapy#readme",
   "devDependencies": {
     "three": "SamsungInternet/three.js#dev",
+    "three-system": "SamsungInternet/three-system",
     "three-effects": "SamsungInternet/three-effects",
     "rollup": "^1.23.1",
     "rollup-plugin-node-resolve": "^5.2.0"

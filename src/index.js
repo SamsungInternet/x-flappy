@@ -29,6 +29,9 @@ function initScene(renderer, scene, camera, assets) {
         return Math.max(a, Math.min(b,v));
     }
 
+    var dir = new THREE.Vector3();
+    var angle = 0;
+
     scene.addEventListener("beforeRender", function (e) {
         if(lastLeft === undefined) {
             lastLeft = cc[0].position.y;
@@ -39,22 +42,34 @@ function initScene(renderer, scene, camera, assets) {
 
         
         // magic flying formula 
-        var dt = e.time - lastTime;
+        var dt = (e.time - lastTime) * 0.001;
         var dl = cc[0].position.y - lastLeft;
         var dr = cc[1].position.y - lastRight;
 
-        var timeConstant = e.time * 0.001 * dt;
+        lastLeft = cc[0].position.y;
+        lastRight = cc[1].position.y;
+        
         var smoothConstant = 0.33;
 
-        var ds = clamp(-0.1, 0.33, -1 * (dl + dr) - 0.1) * timeConstant;
-        var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * timeConstant;
-        //user.position.y = smoothConstant * speed + (1 - smoothConstant) * Math.max(0.1, user.position.y + ds);
-        user.rotation.y = smoothConstant * user.rotation.y + (1 - smoothConstant) * (user.rotation.y + da);
-        speed = smoothConstant * speed + (1 - smoothConstant) * Math.max(0.1, speed - ds);
+        camera.getWorldDirection(dir);
+
+        var ds = clamp(-dt, dt,  -(dl + dr) - dt) * dt;
+        
+        user.position.y = smoothConstant * user.position.y + (1 - smoothConstant) * (user.position.y + (ds < 0 ? 33 : 100) * ds );
     
-        //scene.dispatchEvent({ type: "control", speed, angle: user.rotation.y});
+        user.position.y = clamp(0.1, 10, user.position.y);
+
+        speed = smoothConstant * speed + (1 - smoothConstant) * clamp(1, 10, speed - 66 * ds - dt);
     
-        scene.dispatchEvent({ type: "control", speed: 0.001, angle: Math.PI/3, delta: dt});
+        var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * dt;
+    
+        angle = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
+        
+        //scene.dispatchEvent({ type: "control", speed, angle: user.rotation.y, delta: dt});
+    
+        user.rotation.y = -angle;
+
+        scene.dispatchEvent({ type: "control", speed: speed, angle: angle, delta: dt});
     
         lastTime = e.time;
     })
