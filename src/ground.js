@@ -66,6 +66,7 @@ export default function (renderer, scene, camera, assets) {
             roughness:0.1,
             transparent: true
         }));
+        mesh.material.opacity = 0.66;
 
         mesh.material.opacity = 0.5 ;
 
@@ -79,7 +80,7 @@ export default function (renderer, scene, camera, assets) {
         
         //mesh.receiveShadow = true;
 
-        scene.dispatchEvent({ type: "audio/voop" });
+        //scene.dispatchEvent({ type: "audio/woosh" });
 
         group.add(mesh);
     }

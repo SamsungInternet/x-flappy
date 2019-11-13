@@ -46,16 +46,16 @@ export default function (renderer, scene, camera, assets) {
 	light.shadow.mapSize.width = isHD ? 4096 : 2048;
 	light.shadow.mapSize.height = isHD ? 4096 : 2048; 
 	light.shadow.type = isHD ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
-	light.shadow.camera.near = 1;    
+	light.shadow.camera.near = 10;    
 	light.shadow.camera.far = 200;    
-	light.shadow.camera.left = -50;   
-	light.shadow.camera.top = 50;     
-	light.shadow.camera.right = 50;    
-	light.shadow.camera.bottom = -50;
+	light.shadow.camera.left = -10;   
+	light.shadow.camera.top = 10;     
+	light.shadow.camera.right = 10;    
+	light.shadow.camera.bottom = -10;
 	light.shadow.bias = 0.00001;
 	light.shadow.radius = 1;
 
-	var hemi = new THREE.HemisphereLight(new THREE.Color(0x888899), new THREE.Color(0x776666), 1);
+	var hemi = new THREE.HemisphereLight(new THREE.Color(0x888899), new THREE.Color(0x333333), 1);
 
 	group.add(hemi);
 
@@ -67,7 +67,9 @@ export default function (renderer, scene, camera, assets) {
 
 	var col = new THREE.Color(0xCC7733);
 	
-	var a = 1;
+	var a = light.position.y;
+
+	light.position.multiplyScalar(100);
 	
 	scene.fog = new THREE.FogExp2( 0xFFFFFF,0.0066);
 
@@ -112,6 +114,7 @@ export default function (renderer, scene, camera, assets) {
 
 	window.setTimeout(fn,0);
 
+	/*
 	scene.dispatchEvent({ type:"interact/register", entity: skybox});
 
 	skybox.addEventListener("interact/move", function (e) {
@@ -124,6 +127,7 @@ export default function (renderer, scene, camera, assets) {
 		fn();
 		
 	});
-
+	*/
+	
     return group;
 }

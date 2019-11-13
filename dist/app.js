@@ -52618,14 +52618,20 @@ function initGround (renderer, scene, camera, assets) {
     });
 
     attachSystem(scene, "move", {
+<<<<<<< Updated upstream
         init: function(e, objects, name) {
             if(objects.length > 256) 
                 scene.dispatchEvent({ entity: objects[0], type: name + "/unregister"});
             return {};
+=======
+        init: function (e, objects, name) {
+            return {}
+>>>>>>> Stashed changes
         },
 
         remove: function(e, objects, name) {
             e.entity.parent.remove(e.entity);
+<<<<<<< Updated upstream
         },
 
         control: function (e, objects, name) {
@@ -52634,10 +52640,36 @@ function initGround (renderer, scene, camera, assets) {
                 obj.position.x -= Math.sin(a) * e.speed * e.delta;
                 obj.position.z -= Math.cos(a) * e.speed * e.delta;
                 obj.position.y += e.delta;
+=======
+            console.log(objects.length);
+        },
+
+        control: function (e, objects, name) {
+            objects.slice(0).forEach(function (obj) {
+                var a = e.angle - Math.PI;
+                obj.position.x += Math.sin(a) * e.speed * e.delta;
+                obj.position.z -= Math.cos(a) * e.speed * e.delta;
+                obj.position.y += e.delta * 0.001;
+
+                if(obj.position.y < 1) {
+                    let s = Math.max(0, obj.position.y);
+                    //obj.scale.set(s,s,s); 
+                }
+                
+                if(obj.position.y > 0) {
+                    let s = 1 - obj.position.y;
+                    obj.scale.set(s,s,s); 
+                }
+
+                if(obj.position.y > 1) {
+                    scene.dispatchEvent({ type: name + "/unregister", entity: obj });
+                }
+>>>>>>> Stashed changes
             });
         }
     });
 
+<<<<<<< Updated upstream
     function addBaloon() {
         var mesh = new Mesh(assets["baloon_model"], new MeshStandardMaterial({
             color: new Color(`hsl(${Math.random() * 255}, 80%, 40%)`),
@@ -52659,11 +52691,46 @@ function initGround (renderer, scene, camera, assets) {
         //mesh.receiveShadow = true;
 
         scene.dispatchEvent({ type: "audio/voop" });
+=======
+    var colors = [new Color(0xFF0000), new Color(0x66FF00), new Color(0x00FF00), new Color(0xFF0066), new Color(0x00FF66)];
+
+    function addBaloon() {
+        var mesh = new Mesh(assets["baloon_model"], new MeshStandardMaterial({
+            color: colors[Math.floor(Math.random() * colors.length)],
+            metalness: 0.1,
+            roughness: 0.33,
+            transparent: true,
+            side: FrontSide
+            //emmisive: emmisiveColor
+        }));
+        mesh.material.opacity = 0.66;
+
+        var a = Math.PI * 2 * Math.random();
+        var r = 3 + 3 * Math.random();
+        
+        mesh.position.x = Math.sin(a) * r;
+        mesh.position.z = Math.cos(a) * r;
+        mesh.position.y = -6 + 3 * Math.random();
+
+        scene.dispatchEvent({ type: "collide/register", entity: mesh });
+        scene.dispatchEvent({ type: "move/register", entity: mesh });
+
+        mesh.castShadow = true;
+        
+        mesh.receiveShadow = true;
+
+        //scene.dispatchEvent({ type: "audio/woosh" });
+>>>>>>> Stashed changes
 
         group.add(mesh);
     }
 
+<<<<<<< Updated upstream
     window.setInterval(addBaloon, 200);
+=======
+    window.setInterval(addBaloon, 500);
+
+>>>>>>> Stashed changes
     return group;
 }
 
@@ -52936,7 +53003,7 @@ function initSky (renderer, scene, camera, assets) {
 	light.shadow.bias = 0.00001;
 	light.shadow.radius = 1;
 
-	var hemi = new HemisphereLight(new Color(0x888899), new Color(0x776666), 1);
+	var hemi = new HemisphereLight(new Color(0x888899), new Color(0x333333), 1);
 
 	group.add(hemi);
 
@@ -53066,6 +53133,7 @@ function initScene(renderer, scene, camera, assets) {
     
         var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * dt;
     
+<<<<<<< Updated upstream
         angle = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
         
         //scene.dispatchEvent({ type: "control", speed, angle: user.rotation.y, delta: dt});
@@ -53073,6 +53141,9 @@ function initScene(renderer, scene, camera, assets) {
         user.rotation.y = -angle;
 
         scene.dispatchEvent({ type: "control", speed: speed, angle: angle, delta: dt});
+=======
+        scene.dispatchEvent({ type: "control", speed: 0.001, angle: 1, delta: dt});
+>>>>>>> Stashed changes
     
         lastTime = e.time;
     });

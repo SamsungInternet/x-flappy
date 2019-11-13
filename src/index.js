@@ -23,7 +23,7 @@ function initScene(renderer, scene, camera, assets) {
     var lastTime;
     var lastLeft;
     var lastRight;
-
+    var dir = new THREE.Vector3();
 
     function clamp(a,b,v) {
         return Math.max(a, Math.min(b,v));
@@ -45,6 +45,8 @@ function initScene(renderer, scene, camera, assets) {
         var dt = (e.time - lastTime) * 0.001;
         var dl = cc[0].position.y - lastLeft;
         var dr = cc[1].position.y - lastRight;
+        
+        camera.getWorldDirection(dir);
 
         lastLeft = cc[0].position.y;
         lastRight = cc[1].position.y;
