@@ -52584,18 +52584,16 @@ function initGround (renderer, scene, camera, assets) {
     
     var group = new Group();
 
-    var material = new MeshStandardMaterial({
-        roughness: 1,
-        aoMapIntensity: 2,
-        aoMap: assets["ground_material"],
+    var material = new MeshPhongMaterial({
+        color: new Color(0x555555),
+        shininess: 40,
         map: assets["ground_diffuse"],
-        roughnessMap: assets["ground_material"],
         normalMap: assets["ground_normals"]
     });
 
     var textureOffset = new Vector2(0, 0);
 
-    (["map", "roughnessMap", "normalMap", "metalnessMap", "aoMap"]).forEach(function(k){
+    (["map", "roughnessMap", "normalMap", "aoMap"]).forEach(function(k){
         if(!material[k]) return;
         material[k].wrapS = MirroredRepeatWrapping;
         material[k].wrapT = MirroredRepeatWrapping;
@@ -52612,125 +52610,109 @@ function initGround (renderer, scene, camera, assets) {
     
     group.add(mesh);
 
-    scene.addEventListener("control", function(e) {
-        textureOffset.x += Math.sin(e.angle) * e.speed * e.delta * 0.1;
-        textureOffset.y += Math.cos(e.angle) * e.speed * e.delta * 0.1;
+    scene.addEventListener("update", function(e) {
+        textureOffset.x -= Math.sin(e.angle) * e.speed * e.delta * 0.1;
+        textureOffset.y -= Math.cos(e.angle) * e.speed * e.delta * 0.1;
     });
 
+    var contacts = [], sum = 0;
+
+    var raycaster = new Raycaster();
+
     attachSystem(scene, "move", {
-<<<<<<< Updated upstream
         init: function(e, objects, name) {
+            e.entity.scale.set(0.001,0.001,0.001);
             if(objects.length > 256) 
                 scene.dispatchEvent({ entity: objects[0], type: name + "/unregister"});
-            return {};
-=======
-        init: function (e, objects, name) {
-            return {}
->>>>>>> Stashed changes
+            return { time: window.performance.now()};
         },
 
         remove: function(e, objects, name) {
             e.entity.parent.remove(e.entity);
-<<<<<<< Updated upstream
         },
 
-        control: function (e, objects, name) {
-            objects.forEach(function(obj){
-                var a = Math.PI - e.angle;
+        update: function (e, objects, name) {
+            var t = window.performance.now();
+            objects.slice(0).forEach(function(obj){
+                var a = e.angle, s;
                 obj.position.x -= Math.sin(a) * e.speed * e.delta;
                 obj.position.z -= Math.cos(a) * e.speed * e.delta;
                 obj.position.y += e.delta;
-=======
-            console.log(objects.length);
-        },
-
-        control: function (e, objects, name) {
-            objects.slice(0).forEach(function (obj) {
-                var a = e.angle - Math.PI;
-                obj.position.x += Math.sin(a) * e.speed * e.delta;
-                obj.position.z -= Math.cos(a) * e.speed * e.delta;
-                obj.position.y += e.delta * 0.001;
-
-                if(obj.position.y < 1) {
-                    let s = Math.max(0, obj.position.y);
-                    //obj.scale.set(s,s,s); 
-                }
-                
-                if(obj.position.y > 0) {
-                    let s = 1 - obj.position.y;
-                    obj.scale.set(s,s,s); 
+                var l = obj.position.lengthSq();
+                var ot = t - obj.userData[name].time;
+                if( l > 240) {
+                    s = Math.max(0.001, (250 - l) / 10);
+                    obj.scale.set(s,s,s);
+                    if(l >= 250) scene.dispatchEvent({type: name + "/unregister", entity: obj});
+                } else if(ot < 1000) {
+                    s = Math.max(0.001, ot / 1000);
+                    obj.scale.set(s,s,s);
+                } else {
+                    s = 1;
+                    obj.scale.set(1,1,1);
                 }
 
-                if(obj.position.y > 1) {
-                    scene.dispatchEvent({ type: name + "/unregister", entity: obj });
+                var r = obj.geometry.boundingSphere.radius;
+                var idx = contacts.indexOf(obj);
+                var rs = r * r * s * 6;
+                if(l < rs) {
+                    raycaster.ray.direction.copy(obj.position).normalize();
+                    var ret = raycaster.intersectObject(obj);
+                    if(ret.length) {
+                        sum += Math.pow(1 - Math.min(3, ret[0].distance) / 3, 2);
+                    } else {
+                        scene.dispatchEvent({ type: "reset" });
+                        scene.dispatchEvent({ type: "audio/zit" });
+                        scene.dispatchEvent({ type: "audio/tsiou" });
+                    }
+                    if(idx === -1) contacts.push(obj);
+                } else {
+                    if(idx !== -1) contacts.splice(idx, 1);
                 }
->>>>>>> Stashed changes
             });
+            if(!contacts.length) {
+                sum = Math.floor(sum);
+                if(sum) scene.dispatchEvent({ type: "score", value: sum});
+                sum = 0;
+            }
+            //console.log(contacts.length, sum);
         }
     });
 
-<<<<<<< Updated upstream
+
+
+    window.temp = assets["baloon_model"];
+
+    assets["baloon_model"].translate(0, -5.3, 0);
+    assets["baloon_model"].computeBoundingSphere();
+
     function addBaloon() {
-        var mesh = new Mesh(assets["baloon_model"], new MeshStandardMaterial({
+        var mesh = new Mesh(assets["baloon_model"], new MeshPhongMaterial({
             color: new Color(`hsl(${Math.random() * 255}, 80%, 40%)`),
-            metalness: 0.1,
-            roughness:0.1,
+            shininess: 80,
             transparent: true
         }));
+    
+        mesh.material.opacity = 0.66;
 
-        mesh.material.opacity = 0.5 ;
-
-        var a = Math.PI * 2 * Math.random();
-        var r = 3 + Math.random() * 6;
         
-        mesh.position.set( Math.sin(a) * r, -3,  Math.cos(a) * r);
+        var a = Math.PI * 2 * Math.random();
+        var r = 0 + Math.random() * 6;
+        
+        mesh.position.set( Math.sin(a) * r, 0.33,  Math.cos(a) * r);
         scene.dispatchEvent({ type: "move/register", entity: mesh });
         
         //mesh.castShadow = true;
         
         //mesh.receiveShadow = true;
 
-        scene.dispatchEvent({ type: "audio/voop" });
-=======
-    var colors = [new Color(0xFF0000), new Color(0x66FF00), new Color(0x00FF00), new Color(0xFF0066), new Color(0x00FF66)];
-
-    function addBaloon() {
-        var mesh = new Mesh(assets["baloon_model"], new MeshStandardMaterial({
-            color: colors[Math.floor(Math.random() * colors.length)],
-            metalness: 0.1,
-            roughness: 0.33,
-            transparent: true,
-            side: FrontSide
-            //emmisive: emmisiveColor
-        }));
-        mesh.material.opacity = 0.66;
-
-        var a = Math.PI * 2 * Math.random();
-        var r = 3 + 3 * Math.random();
-        
-        mesh.position.x = Math.sin(a) * r;
-        mesh.position.z = Math.cos(a) * r;
-        mesh.position.y = -6 + 3 * Math.random();
-
-        scene.dispatchEvent({ type: "collide/register", entity: mesh });
-        scene.dispatchEvent({ type: "move/register", entity: mesh });
-
-        mesh.castShadow = true;
-        
-        mesh.receiveShadow = true;
-
         //scene.dispatchEvent({ type: "audio/woosh" });
->>>>>>> Stashed changes
 
         group.add(mesh);
     }
 
-<<<<<<< Updated upstream
     window.setInterval(addBaloon, 200);
-=======
-    window.setInterval(addBaloon, 500);
 
->>>>>>> Stashed changes
     return group;
 }
 
@@ -52994,12 +52976,12 @@ function initSky (renderer, scene, camera, assets) {
 	light.shadow.mapSize.width = isHD ? 4096 : 2048;
 	light.shadow.mapSize.height = isHD ? 4096 : 2048; 
 	light.shadow.type = isHD ? PCFSoftShadowMap : PCFShadowMap;
-	light.shadow.camera.near = 1;    
+	light.shadow.camera.near = 10;    
 	light.shadow.camera.far = 200;    
-	light.shadow.camera.left = -50;   
-	light.shadow.camera.top = 50;     
-	light.shadow.camera.right = 50;    
-	light.shadow.camera.bottom = -50;
+	light.shadow.camera.left = -10;   
+	light.shadow.camera.top = 10;     
+	light.shadow.camera.right = 10;    
+	light.shadow.camera.bottom = -10;
 	light.shadow.bias = 0.00001;
 	light.shadow.radius = 1;
 
@@ -53015,7 +52997,9 @@ function initSky (renderer, scene, camera, assets) {
 
 	var col = new Color(0xCC7733);
 	
-	var a = 1;
+	var a = light.position.y;
+
+	light.position.multiplyScalar(100);
 	
 	scene.fog = new FogExp2( 0xFFFFFF,0.0066);
 
@@ -53060,6 +53044,7 @@ function initSky (renderer, scene, camera, assets) {
 
 	window.setTimeout(fn,0);
 
+	/*
 	scene.dispatchEvent({ type:"interact/register", entity: skybox});
 
 	skybox.addEventListener("interact/move", function (e) {
@@ -53072,7 +53057,8 @@ function initSky (renderer, scene, camera, assets) {
 		fn();
 		
 	});
-
+	*/
+	
     return group;
 }
 
@@ -53087,20 +53073,15 @@ function initScene(renderer, scene, camera, assets) {
     user.add(camera);
     scene.add(user);
     
-    // Movement
-
+    // supercalifragilisticexpialidocious
+    
     var speed = 0;
     var lastTime;
     var lastLeft;
     var lastRight;
-
-
-    function clamp(a,b,v) {
-        return Math.max(a, Math.min(b,v));
-    }
-
+ 
     var dir = new Vector3();
-    var angle = 0;
+    var angle = 0, dsum = 0;
 
     scene.addEventListener("beforeRender", function (e) {
         if(lastLeft === undefined) {
@@ -53110,11 +53091,15 @@ function initScene(renderer, scene, camera, assets) {
             return;
         }
 
-        
-        // magic flying formula 
+        function clamp(a,b,v) {
+            return Math.max(a, Math.min(b,v));
+        }
+            
         var dt = (e.time - lastTime) * 0.001;
         var dl = cc[0].position.y - lastLeft;
         var dr = cc[1].position.y - lastRight;
+        
+        camera.getWorldDirection(dir);
 
         lastLeft = cc[0].position.y;
         lastRight = cc[1].position.y;
@@ -53125,6 +53110,14 @@ function initScene(renderer, scene, camera, assets) {
 
         var ds = clamp(-dt, dt,  -(dl + dr) - dt) * dt;
         
+        
+        if(ds <= 0) {
+            if(dsum) scene.dispatchEvent({ type: "audio/flap" });
+             dsum = 0;
+        } else {
+            dsum += ds;
+        }
+
         user.position.y = smoothConstant * user.position.y + (1 - smoothConstant) * (user.position.y + (ds < 0 ? 33 : 100) * ds );
     
         user.position.y = clamp(0.1, 10, user.position.y);
@@ -53133,17 +53126,9 @@ function initScene(renderer, scene, camera, assets) {
     
         var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * dt;
     
-<<<<<<< Updated upstream
-        angle = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
+        user.rotation.y = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
         
-        //scene.dispatchEvent({ type: "control", speed, angle: user.rotation.y, delta: dt});
-    
-        user.rotation.y = -angle;
-
-        scene.dispatchEvent({ type: "control", speed: speed, angle: angle, delta: dt});
-=======
-        scene.dispatchEvent({ type: "control", speed: 0.001, angle: 1, delta: dt});
->>>>>>> Stashed changes
+        scene.dispatchEvent({ type: "update", speed: speed, angle: Math.PI - user.rotation.y, delta: dt});
     
         lastTime = e.time;
     });
@@ -53177,28 +53162,40 @@ function initScene(renderer, scene, camera, assets) {
         listener.context.resume();
         camera.add( listener );
 
+        console.log("AUDIO");
         function attachSound(name) {
             var s = new Audio( listener );
             s.setBuffer(assets[name]);
             s.setVolume( 1.0 );
-            scene.addEventListener("audio/" + name, function (){
+            scene.addEventListener("audio/" + name, function (e){
                 if(s.isPlaying) {
-                    var s2 = new Audio( listener );
-                    s2.setBuffer(assets[name]);
-                    s2.setVolume( 1.0 );
-                    s2.play();        
+                    if(s.getLoop()) {
+                        s.setVolume( e.volume || 1 );
+                    } else {
+                        var s2 = new Audio( listener );
+                        s2.setBuffer(assets[name]);
+                        s2.setVolume( e.volume || 1 );
+                        s2.setLoop( !!e.loop );
+                        s2.play();
+                        s2.onended = function () { s2.disconnect(); };
+                    }        
                 } else {
+                    s.setBuffer(assets[name]);
+                    s.setVolume( e.volume || 1);
+                    s.setLoop( !!e.loop );
                     s.play();
+                    //debugger;
                 }
             });
         }
         
-        (["flap", "comeon", "woosh", "tick", "voop", "zit"]).forEach(attachSound);
+        (["flap", "comeon", "woosh", "tick", "voop", "zit", "yeah", "wind", "tsiou"]).forEach(attachSound);
 
-        window.removeEventListener("click", firstClick);
+        scene.dispatchEvent({ type: "audio/wind", volume: 0.3, loop: true});
+        document.body.removeEventListener("click", firstClick);
     };
 
-    window.addEventListener("click", firstClick);
+    document.body.addEventListener("click", firstClick);
 }
 
 export { THREE$1 as THREE, WEBVR, initScene, loader as load };
