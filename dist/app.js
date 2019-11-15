@@ -52611,19 +52611,21 @@ function initGround (renderer, scene, camera, assets) {
     group.add(mesh);
 
     scene.addEventListener("update", function(e) {
-        textureOffset.x -= Math.sin(e.angle) * e.speed * e.delta * 0.1;
-        textureOffset.y -= Math.cos(e.angle) * e.speed * e.delta * 0.1;
+        textureOffset.x += Math.sin(e.angle) * e.speed * e.delta * 0.1;
+        textureOffset.y += Math.cos(e.angle) * e.speed * e.delta * 0.1;
     });
 
     var contacts = [], sum = 0;
 
     var raycaster = new Raycaster();
 
+    var currentAngle = 0, currentSpeed = 0;
+
+    var pos = new Vector3();
+
     attachSystem(scene, "move", {
         init: function(e, objects, name) {
             e.entity.scale.set(0.001,0.001,0.001);
-            if(objects.length > 256) 
-                scene.dispatchEvent({ entity: objects[0], type: name + "/unregister"});
             return { time: window.performance.now()};
         },
 
@@ -52631,19 +52633,30 @@ function initGround (renderer, scene, camera, assets) {
             e.entity.parent.remove(e.entity);
         },
 
+        reset: function(e, objects, name) {
+            objects.slice(0).forEach(function(obj) {
+                scene.dispatchEvent({type: name+"/unregister", entity: obj});
+            });
+        },
+
         update: function (e, objects, name) {
+            var a = Math.PI - e.angle, s;
+            currentAngle = a;
+            currentSpeed = e.speed;
             var t = window.performance.now();
             objects.slice(0).forEach(function(obj){
-                var a = e.angle, s;
                 obj.position.x -= Math.sin(a) * e.speed * e.delta;
                 obj.position.z -= Math.cos(a) * e.speed * e.delta;
                 obj.position.y += e.delta;
-                var l = obj.position.lengthSq();
+                pos.copy(obj.position);
+                pos.y = e.height;
+                var l = pos.length();
                 var ot = t - obj.userData[name].time;
-                if( l > 240) {
-                    s = Math.max(0.001, (250 - l) / 10);
+                
+                if( l > 15) {
+                    s = Math.max(0.001, (16 - l));
                     obj.scale.set(s,s,s);
-                    if(l >= 250) scene.dispatchEvent({type: name + "/unregister", entity: obj});
+                    if(l >= 16) scene.dispatchEvent({type: name + "/unregister", entity: obj});
                 } else if(ot < 1000) {
                     s = Math.max(0.001, ot / 1000);
                     obj.scale.set(s,s,s);
@@ -52654,17 +52667,24 @@ function initGround (renderer, scene, camera, assets) {
 
                 var r = obj.geometry.boundingSphere.radius;
                 var idx = contacts.indexOf(obj);
-                var rs = r * r * s * 6;
+                var rs = r *  s * 1.618;
                 if(l < rs) {
+                    obj.material.side = DoubleSide;
+                    raycaster.ray.origin.set(0, e.height, 0);
                     raycaster.ray.direction.copy(obj.position).normalize();
                     var ret = raycaster.intersectObject(obj);
-                    if(ret.length) {
-                        sum += Math.pow(1 - Math.min(3, ret[0].distance) / 3, 2);
-                    } else {
+                    if(ret.length > 1){
+                        console.log("CRASH");
                         scene.dispatchEvent({ type: "reset" });
-                        scene.dispatchEvent({ type: "audio/zit" });
-                        scene.dispatchEvent({ type: "audio/tsiou" });
+                        scene.dispatchEvent({ type: "audio/zit", volume: 3 });
+                        scene.dispatchEvent({ type: "audio/tsiou", volume: 3 });
+                        window.setTimeout(function () { scene.dispatchEvent({ type: "audio/comeon" }); } ,1000);
+                    } else  if(ret.length) {
+                        sum += Math.pow(1 - Math.min(1, ret[0].distance), 2);
                     }
+                    
+                    obj.material.side = FrontSide;
+                     
                     if(idx === -1) contacts.push(obj);
                 } else {
                     if(idx !== -1) contacts.splice(idx, 1);
@@ -52683,7 +52703,7 @@ function initGround (renderer, scene, camera, assets) {
 
     window.temp = assets["baloon_model"];
 
-    assets["baloon_model"].translate(0, -5.3, 0);
+    //assets["baloon_model"].translate(0, -5.3, 0);
     assets["baloon_model"].computeBoundingSphere();
 
     function addBaloon() {
@@ -52696,8 +52716,8 @@ function initGround (renderer, scene, camera, assets) {
         mesh.material.opacity = 0.66;
 
         
-        var a = Math.PI * 2 * Math.random();
-        var r = 0 + Math.random() * 6;
+        var a = currentAngle + Math.PI  * Math.random() - Math.PI/2;
+        var r = 2 + Math.random() * (1 + 3 * currentSpeed) + 3 * currentSpeed;
         
         mesh.position.set( Math.sin(a) * r, 0.33,  Math.cos(a) * r);
         scene.dispatchEvent({ type: "move/register", entity: mesh });
@@ -53083,6 +53103,12 @@ function initScene(renderer, scene, camera, assets) {
     var dir = new Vector3();
     var angle = 0, dsum = 0;
 
+    scene.addEventListener("reset", function (e) {
+        speed = 0;
+        user.position.y = 0.1;
+        scene.userData["flash"].value = window.performance.now() + 1000;
+    });
+
     scene.addEventListener("beforeRender", function (e) {
         if(lastLeft === undefined) {
             lastLeft = cc[0].position.y;
@@ -53108,7 +53134,7 @@ function initScene(renderer, scene, camera, assets) {
 
         camera.getWorldDirection(dir);
 
-        var ds = clamp(-dt, dt,  -(dl + dr) - dt) * dt;
+        var ds = clamp(-dt, dt,  -(dl + dr) - dt) * dt * 3.3;
         
         
         if(ds <= 0) {
@@ -53120,17 +53146,23 @@ function initScene(renderer, scene, camera, assets) {
 
         user.position.y = smoothConstant * user.position.y + (1 - smoothConstant) * (user.position.y + (ds < 0 ? 33 : 100) * ds );
     
-        user.position.y = clamp(0.1, 10, user.position.y);
+        user.position.y = clamp(0.1, 6.6, user.position.y);
 
-        speed = smoothConstant * speed + (1 - smoothConstant) * clamp(1, 10, speed - 66 * ds - dt);
+        if(user.position.y === 0.1) ds = 0;
+
+        speed = smoothConstant * speed + (1 - smoothConstant) * clamp(1, 10, speed - 33 * ds - 0.33 * dt);
     
         var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * dt;
     
-        user.rotation.y = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
+        angle = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
         
-        scene.dispatchEvent({ type: "update", speed: speed, angle: Math.PI - user.rotation.y, delta: dt});
+        user.rotation.y = -angle;
+    
+        scene.dispatchEvent({ type: "update", speed: speed * 1.6, angle: angle, delta: dt, height: user.position.y});
+        //scene.dispatchEvent({ type: "update", speed: speed, angle: Math.sin(e.time/1000), delta: dt});
     
         lastTime = e.time;
+        scene.userData.time.value = e.time;
     });
 
 
@@ -53145,9 +53177,12 @@ function initScene(renderer, scene, camera, assets) {
         shader.fragmentShader = shader.fragmentShader.replace("gl_FragColor", "alpha *= smoothstep(1., 0.999, texture2D(depthTexture, vUv).r);\ngl_FragColor");
     };
 
-    fx$1(["fxaa", "bloom"]);
+    fx$1(["uniform float time;","uniform float flash;","fxaa", "bloom", "color.rgb = mix(color.rgb, vec3(1.),  min(1., max(0., (flash - time) / 1000.)));"]);
 
-    
+    scene.userData["flash"] = { value: window.performance.now()};
+
+    scene.userData["time"] = { value: window.performance.now()};
+
     var objects = {
         sky: initSky(renderer, scene),
         ground: initGround(renderer, scene, camera, assets)

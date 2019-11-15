@@ -27,6 +27,12 @@ function initScene(renderer, scene, camera, assets) {
     var dir = new THREE.Vector3();
     var angle = 0, dsum = 0;
 
+    scene.addEventListener("reset", function (e) {
+        speed = 0;
+        user.position.y = 0.1;
+        scene.userData["flash"].value = window.performance.now() + 1000;
+    });
+
     scene.addEventListener("beforeRender", function (e) {
         if(lastLeft === undefined) {
             lastLeft = cc[0].position.y;
@@ -52,7 +58,7 @@ function initScene(renderer, scene, camera, assets) {
 
         camera.getWorldDirection(dir);
 
-        var ds = clamp(-dt, dt,  -(dl + dr) - dt) * dt;
+        var ds = clamp(-dt, dt,  -(dl + dr) - dt) * dt * 3.3;
         
         
         if(ds <= 0) {
@@ -64,17 +70,23 @@ function initScene(renderer, scene, camera, assets) {
 
         user.position.y = smoothConstant * user.position.y + (1 - smoothConstant) * (user.position.y + (ds < 0 ? 33 : 100) * ds );
     
-        user.position.y = clamp(0.1, 10, user.position.y);
+        user.position.y = clamp(0.1, 6.6, user.position.y);
 
-        speed = smoothConstant * speed + (1 - smoothConstant) * clamp(1, 10, speed - 66 * ds - dt);
+        if(user.position.y === 0.1) ds = 0;
+
+        speed = smoothConstant * speed + (1 - smoothConstant) * clamp(1, 10, speed - 33 * ds - 0.33 * dt);
     
         var da = clamp(-1, 1, cc[0].position.y - cc[1].position.y) * dt;
     
-        user.rotation.y = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
+        angle = smoothConstant * angle + (1 - smoothConstant) * (angle - da);
         
-        scene.dispatchEvent({ type: "update", speed: speed, angle: Math.PI - user.rotation.y, delta: dt});
+        user.rotation.y = -angle;
+    
+        scene.dispatchEvent({ type: "update", speed: speed * 1.6, angle: angle, delta: dt, height: user.position.y});
+        //scene.dispatchEvent({ type: "update", speed: speed, angle: Math.sin(e.time/1000), delta: dt});
     
         lastTime = e.time;
+        scene.userData.time.value = e.time;
     })
 
 
@@ -89,9 +101,12 @@ function initScene(renderer, scene, camera, assets) {
         shader.fragmentShader = shader.fragmentShader.replace("gl_FragColor", "alpha *= smoothstep(1., 0.999, texture2D(depthTexture, vUv).r);\ngl_FragColor");
     }
 
-    fx(["fxaa", "bloom"]);
+    fx(["uniform float time;","uniform float flash;","fxaa", "bloom", "color.rgb = mix(color.rgb, vec3(1.),  min(1., max(0., (flash - time) / 1000.)));"]);
 
-    
+    scene.userData["flash"] = { value: window.performance.now()};
+
+    scene.userData["time"] = { value: window.performance.now()};
+
     var objects = {
         sky: initSky(renderer, scene, camera, assets),
         ground: initGround(renderer, scene, camera, assets)
